@@ -85,8 +85,10 @@ install_executor() {
     mkdir -p "$HELIOS_HOME"
 
     TMP_BIN="/tmp/helios-executor-${PLATFORM}"
-    curl -fsSL -L "https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/helios-executor-${PLATFORM}" \
-        -o "$TMP_BIN" || fail "helios-executor 다운로드 실패"
+    DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/helios-executor-${PLATFORM}"
+    info "URL: ${DOWNLOAD_URL}"
+    curl -fSL "${DOWNLOAD_URL}" -o "$TMP_BIN" 2>&1 || fail "helios-executor 다운로드 실패"
+    info "다운로드 크기: $(wc -c < "$TMP_BIN") bytes"
     
     if [ ! -s "$TMP_BIN" ]; then
         fail "다운로드된 파일이 비어있습니다"
