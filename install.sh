@@ -84,9 +84,18 @@ install_executor() {
     info "Executor 다운로드..."
     mkdir -p "$HELIOS_HOME"
 
+    TMP_BIN="/tmp/helios-executor-${PLATFORM}"
     curl -fsSL "https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/helios-executor-${PLATFORM}" \
-        -o "$EXECUTOR_BIN" 2>/dev/null || fail "helios-executor 다운로드 실패"
-    chmod +x "$EXECUTOR_BIN"
+        -o "$TMP_BIN" 2>/dev/null || fail "helios-executor 다운로드 실패"
+    chmod +x "$TMP_BIN"
+
+    # /usr/local/bin에 설치 (sudo 필요할 수 있음)
+    if [ -w "$(dirname "$EXECUTOR_BIN")" ]; then
+        mv "$TMP_BIN" "$EXECUTOR_BIN"
+    else
+        info "관리자 권한 필요 — sudo 실행"
+        sudo mv "$TMP_BIN" "$EXECUTOR_BIN"
+    fi
     ok "Executor 바이너리: $EXECUTOR_BIN"
 
     # 설정 파일 (신규 설치만)
