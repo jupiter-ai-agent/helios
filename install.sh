@@ -118,6 +118,14 @@ install_executor() {
             sudo chown "$(whoami)" "$PROJECT_DIR"
         fi
 
+        # 프로젝트 파일 다운로드
+        info "프로젝트 파일 다운로드..."
+        curl -fsSL -L "https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/helios-project.tar.gz" \
+            -o /tmp/helios-project.tar.gz || fail "프로젝트 파일 다운로드 실패"
+        tar xzf /tmp/helios-project.tar.gz -C "$PROJECT_DIR"
+        rm -f /tmp/helios-project.tar.gz
+        ok "프로젝트 파일: $PROJECT_DIR"
+
         cat > "$HELIOS_HOME/executor.yaml" << YAML
 socket_path: "${HELIOS_HOME}/executor.sock"
 project_dir: "${PROJECT_DIR}"
