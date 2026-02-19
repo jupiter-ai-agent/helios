@@ -9,6 +9,7 @@ HELIOS_HOME="$HOME/.helios"
 EXECUTOR_BIN="/usr/local/bin/helios-executor"
 SOCKET_PATH="$HOME/.helios/executor.sock"
 OPERATOR_IMAGE="jupitertriangles/helios-operator:202602"
+UI_IMAGE="jupitertriangles/helios-ui:202602"
 
 # ── 색상 ──
 RED='\033[0;31m'
@@ -220,19 +221,42 @@ wait_executor() {
     fail "Executor 시작 실패. 로그 확인: cat $HELIOS_HOME/executor.log"
 }
 
+# ── Docker 네트워크 ──
+create_network() {
+    docker network create helios-net 2>/dev/null || true
+}
+
+# ── helios-ui 컨테이너 ──
+start_ui() {
+    info "UI 이미지 pull..."
+    docker pull "$UI_IMAGE" 2>/dev/null || warn "pull 실패 — 로컬 이미지 사용"
+
+    docker rm -f helios-ui 2>/dev/null || true
+
+    info "UI 컨테이너 기동..."
+    docker run -d \
+        --name helios-ui \
+        --restart unless-stopped \
+        --network helios-net \
+        "$UI_IMAGE" >/dev/null
+
+    ok "UI 컨테이너 기동"
+}
+
 # ── Operator 컨테이너 ──
 start_operator() {
     info "Operator 이미지 pull..."
     docker pull "$OPERATOR_IMAGE" 2>/dev/null || warn "pull 실패 — 로컬 이미지 사용"
 
-    # 기존 컨테이너 제거
     docker rm -f helios-operator 2>/dev/null || true
 
     info "Operator 컨테이너 기동..."
     docker run -d \
         --name helios-operator \
         --restart unless-stopped \
+        --network helios-net \
         -p 1110:1110 \
+        -e HELIOS_UI_URL=http://helios-ui:80 \
         -v "${HELIOS_HOME}/executor.sock:/var/run/helios-executor.sock" \
         -v "${PROJECT_DIR}:/helios" \
         -v helios-operator-data:/data \
@@ -348,6 +372,8 @@ main() {
     install_executor
     register_daemon
     wait_executor
+    create_network
+    start_ui
     start_operator
 
     # 호스트 IP 감지
