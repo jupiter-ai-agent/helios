@@ -6,7 +6,7 @@ set -e
 VERSION="0.1.0"
 GITHUB_REPO="jupiter-ai-agent/helios"
 HELIOS_HOME="$HOME/.helios"
-EXECUTOR_BIN="$HOME/.local/bin/helios-executor"
+EXECUTOR_BIN="/usr/local/bin/helios-executor"
 SOCKET_PATH="/var/run/helios-executor.sock"
 OPERATOR_IMAGE="jupitertriangles/helios-operator:202602"
 
@@ -82,7 +82,7 @@ check_docker() {
 # ── Executor 설치 ──
 install_executor() {
     info "Executor 다운로드..."
-    mkdir -p "$HELIOS_HOME" "$HOME/.local/bin"
+    mkdir -p "$HELIOS_HOME"
 
     curl -fsSL "https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/helios-executor-${PLATFORM}" \
         -o "$EXECUTOR_BIN" 2>/dev/null || fail "helios-executor 다운로드 실패"
