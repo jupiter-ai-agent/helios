@@ -241,7 +241,7 @@ start_operator() {
     # 헬스체크
     info "Operator 시작 대기..."
     for i in $(seq 1 20); do
-        if curl -sk https://localhost:1110/health >/dev/null 2>&1; then
+        if curl -s http://localhost:1110/health >/dev/null 2>&1 || curl -sk https://localhost:1110/health >/dev/null 2>&1; then
             ok "Operator 기동 완료"
             return 0
         fi
@@ -362,7 +362,7 @@ main() {
     echo "  │                                      │"
     echo "  │   HELIOS 설치 완료!                  │"
     echo "  │                                      │"
-    echo "  │   접속: https://${HOST_IP}:1110       │"
+    echo "  │   접속: http://${HOST_IP}:1110        │"
     echo "  │                                      │"
     echo "  └──────────────────────────────────────┘"
     echo ""
