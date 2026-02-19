@@ -305,11 +305,7 @@ uninstall() {
 
     # 6. Executor 바이너리
     info "Executor 바이너리 삭제..."
-    if [ -w "$(dirname "$EXECUTOR_BIN")" ]; then
-        rm -f "$EXECUTOR_BIN"
-    else
-        sudo rm -f "$EXECUTOR_BIN" </dev/tty
-    fi
+    sudo rm -f "$EXECUTOR_BIN" </dev/tty 2>/dev/null || rm -f "$EXECUTOR_BIN" 2>/dev/null || true
 
     # 7. 프로젝트 디렉토리 (설정 삭제 전에 경로 읽기)
     PROJECT_DIR=""
@@ -324,11 +320,7 @@ uninstall() {
         printf "프로젝트 디렉토리도 삭제하시겠습니까? (${PROJECT_DIR}) (yes/no): "
         read DEL_PROJECT </dev/tty
         if [ "$DEL_PROJECT" = "yes" ]; then
-            if [ -w "$PROJECT_DIR" ]; then
-                rm -rf "$PROJECT_DIR"
-            else
-                sudo rm -rf "$PROJECT_DIR" </dev/tty
-            fi
+            sudo rm -rf "$PROJECT_DIR" </dev/tty 2>/dev/null || rm -rf "$PROJECT_DIR" 2>/dev/null || true
             ok "프로젝트 디렉토리 삭제 완료"
         fi
     fi
