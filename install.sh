@@ -85,16 +85,21 @@ install_executor() {
     mkdir -p "$HELIOS_HOME"
 
     TMP_BIN="/tmp/helios-executor-${PLATFORM}"
-    curl -fsSL "https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/helios-executor-${PLATFORM}" \
-        -o "$TMP_BIN" 2>/dev/null || fail "helios-executor 다운로드 실패"
+    curl -fsSL -L "https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/helios-executor-${PLATFORM}" \
+        -o "$TMP_BIN" || fail "helios-executor 다운로드 실패"
+    
+    if [ ! -s "$TMP_BIN" ]; then
+        fail "다운로드된 파일이 비어있습니다"
+    fi
     chmod +x "$TMP_BIN"
 
     # /usr/local/bin에 설치 (sudo 필요할 수 있음)
     if [ -w "$(dirname "$EXECUTOR_BIN")" ]; then
         mv "$TMP_BIN" "$EXECUTOR_BIN"
     else
-        info "관리자 권한 필요 — sudo 실행"
-        sudo mv "$TMP_BIN" "$EXECUTOR_BIN"
+        info "관리자 권한 필요"
+        sudo mv "$TMP_BIN" "$EXECUTOR_BIN" </dev/tty
+        sudo chmod +x "$EXECUTOR_BIN"
     fi
     ok "Executor 바이너리: $EXECUTOR_BIN"
 
@@ -102,7 +107,7 @@ install_executor() {
     if [ ! -f "$HELIOS_HOME/executor.yaml" ]; then
         # 프로젝트 디렉토리 입력
         echo ""
-        read -p "HELIOS 프로젝트 디렉토리 [$(pwd)/helios]: " PROJECT_DIR
+        read -p "HELIOS 프로젝트 디렉토리 [$(pwd)/helios]: " PROJECT_DIR </dev/tty
         PROJECT_DIR="${PROJECT_DIR:-$(pwd)/helios}"
         mkdir -p "$PROJECT_DIR"
 
