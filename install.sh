@@ -305,20 +305,21 @@ uninstall() {
 
     # 6. Executor 바이너리
     info "Executor 바이너리 삭제..."
-    if [ -w "$EXECUTOR_BIN" ]; then
+    if [ -w "$(dirname "$EXECUTOR_BIN")" ]; then
         rm -f "$EXECUTOR_BIN"
     else
         sudo rm -f "$EXECUTOR_BIN" </dev/tty
     fi
 
-    # 7. 설정 디렉토리
-    info "설정 삭제..."
-    rm -rf "$HELIOS_HOME"
-
-    # 8. 프로젝트 디렉토리
+    # 7. 프로젝트 디렉토리 (설정 삭제 전에 경로 읽기)
+    PROJECT_DIR=""
     if [ -f "$HELIOS_HOME/executor.yaml" ]; then
         PROJECT_DIR=$(grep project_dir "$HELIOS_HOME/executor.yaml" 2>/dev/null | awk '{print $2}' | tr -d '"')
     fi
+
+    # 8. 설정 디렉토리
+    info "설정 삭제..."
+    rm -rf "$HELIOS_HOME"
     if [ -n "$PROJECT_DIR" ] && [ -d "$PROJECT_DIR" ]; then
         printf "프로젝트 디렉토리도 삭제하시겠습니까? (${PROJECT_DIR}) (yes/no): "
         read DEL_PROJECT </dev/tty
