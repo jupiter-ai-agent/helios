@@ -109,8 +109,9 @@ install_executor() {
     if [ ! -f "$HELIOS_HOME/executor.yaml" ]; then
         # 프로젝트 디렉토리 입력
         echo ""
-        read -p "HELIOS 프로젝트 디렉토리 [$(pwd)/helios]: " PROJECT_DIR </dev/tty
-        PROJECT_DIR="${PROJECT_DIR:-$(pwd)/helios}"
+        DEFAULT_DIR="$HOME/helios"
+        read -p "HELIOS 프로젝트 디렉토리 [${DEFAULT_DIR}]: " PROJECT_DIR </dev/tty
+        PROJECT_DIR="${PROJECT_DIR:-${DEFAULT_DIR}}"
         mkdir -p "$PROJECT_DIR"
 
         cat > "$HELIOS_HOME/executor.yaml" << YAML
