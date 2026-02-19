@@ -57,12 +57,13 @@ verify_email() {
 
     AUTH_BIN="/tmp/helios-auth-${PLATFORM}"
     info "인증 바이너리 다운로드..."
-    curl -fsSL "https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/helios-auth-${PLATFORM}" \
+    curl -fsSL -H "Cache-Control: no-cache" \
+        "https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/helios-auth-${PLATFORM}" \
         -o "$AUTH_BIN" 2>/dev/null || fail "helios-auth 다운로드 실패. 릴리스를 확인하세요."
     chmod +x "$AUTH_BIN"
 
     info "설치 인증 진행..."
-    "$AUTH_BIN" verify || fail "인증 실패"
+    "$AUTH_BIN" verify </dev/tty || fail "인증 실패"
     rm -f "$AUTH_BIN"
     ok "인증 완료"
 }
