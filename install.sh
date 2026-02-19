@@ -250,6 +250,93 @@ start_operator() {
     fail "Operator 시작 실패. 로그 확인: docker logs helios-operator"
 }
 
+# ── 삭제 ──
+uninstall() {
+    echo ""
+    echo "  ╦ ╦╔═╗╦  ╦╔═╗╔═╗"
+    echo "  ╠═╣║╣ ║  ║║ ║╚═╗"
+    echo "  ╩ ╩╚═╝╩═╝╩╚═╝╚═╝"
+    echo "  Uninstaller v${VERSION}"
+    echo ""
+
+    detect_platform
+
+    printf "${RED}HELIOS를 완전히 삭제합니다. 모든 데이터가 삭제됩니다.${NC}\n"
+    printf "계속하시겠습니까? (yes/no): "
+    read CONFIRM </dev/tty
+    if [ "$CONFIRM" != "yes" ]; then
+        info "삭제 취소"
+        exit 0
+    fi
+
+    # 1. Operator 컨테이너 + 볼륨
+    info "Operator 컨테이너 삭제..."
+    docker rm -f helios-operator 2>/dev/null || true
+    docker volume rm helios-operator-data 2>/dev/null || true
+
+    # 2. 설치된 모든 HELIOS 서비스 컨테이너
+    info "HELIOS 서비스 컨테이너 삭제..."
+    HELIOS_CONTAINERS=$(docker ps -a --format "{{.Names}}" 2>/dev/null | grep "^helios-" || true)
+    if [ -n "$HELIOS_CONTAINERS" ]; then
+        echo "$HELIOS_CONTAINERS" | xargs docker rm -f 2>/dev/null || true
+    fi
+
+    # 3. HELIOS 볼륨
+    info "HELIOS 볼륨 삭제..."
+    HELIOS_VOLUMES=$(docker volume ls --format "{{.Name}}" 2>/dev/null | grep "^helios" || true)
+    if [ -n "$HELIOS_VOLUMES" ]; then
+        echo "$HELIOS_VOLUMES" | xargs docker volume rm 2>/dev/null || true
+    fi
+
+    # 4. HELIOS 네트워크
+    docker network rm helios_helios-net 2>/dev/null || true
+
+    # 5. Executor 데몬 중지 + 제거
+    info "Executor 데몬 제거..."
+    if [ "$(uname -s)" = "Darwin" ]; then
+        launchctl unload "$HOME/Library/LaunchAgents/co.triangles.helios-executor.plist" 2>/dev/null || true
+        rm -f "$HOME/Library/LaunchAgents/co.triangles.helios-executor.plist"
+    else
+        sudo systemctl stop helios-executor 2>/dev/null || true
+        sudo systemctl disable helios-executor 2>/dev/null || true
+        sudo rm -f /etc/systemd/system/helios-executor.service
+        sudo systemctl daemon-reload 2>/dev/null || true
+    fi
+
+    # 6. Executor 바이너리
+    info "Executor 바이너리 삭제..."
+    if [ -w "$EXECUTOR_BIN" ]; then
+        rm -f "$EXECUTOR_BIN"
+    else
+        sudo rm -f "$EXECUTOR_BIN" </dev/tty
+    fi
+
+    # 7. 설정 디렉토리
+    info "설정 삭제..."
+    rm -rf "$HELIOS_HOME"
+
+    # 8. 프로젝트 디렉토리
+    if [ -f "$HELIOS_HOME/executor.yaml" ]; then
+        PROJECT_DIR=$(grep project_dir "$HELIOS_HOME/executor.yaml" 2>/dev/null | awk '{print $2}' | tr -d '"')
+    fi
+    if [ -n "$PROJECT_DIR" ] && [ -d "$PROJECT_DIR" ]; then
+        printf "프로젝트 디렉토리도 삭제하시겠습니까? (${PROJECT_DIR}) (yes/no): "
+        read DEL_PROJECT </dev/tty
+        if [ "$DEL_PROJECT" = "yes" ]; then
+            if [ -w "$PROJECT_DIR" ]; then
+                rm -rf "$PROJECT_DIR"
+            else
+                sudo rm -rf "$PROJECT_DIR" </dev/tty
+            fi
+            ok "프로젝트 디렉토리 삭제 완료"
+        fi
+    fi
+
+    echo ""
+    ok "HELIOS 완전 삭제 완료"
+    echo ""
+}
+
 # ── 메인 ──
 main() {
     echo ""
@@ -288,4 +375,12 @@ main() {
     echo ""
 }
 
-main
+# ── 진입점 ──
+case "${1:-}" in
+    uninstall|remove|delete)
+        uninstall
+        ;;
+    *)
+        main
+        ;;
+esac
