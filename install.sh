@@ -109,10 +109,15 @@ install_executor() {
     if [ ! -f "$HELIOS_HOME/executor.yaml" ]; then
         # 프로젝트 디렉토리 입력
         echo ""
-        DEFAULT_DIR="$HOME/helios"
+        DEFAULT_DIR="/opt/helios"
         read -p "HELIOS 프로젝트 디렉토리 [${DEFAULT_DIR}]: " PROJECT_DIR </dev/tty
         PROJECT_DIR="${PROJECT_DIR:-${DEFAULT_DIR}}"
-        mkdir -p "$PROJECT_DIR"
+        if [ -w "$(dirname "$PROJECT_DIR")" ]; then
+            mkdir -p "$PROJECT_DIR"
+        else
+            sudo mkdir -p "$PROJECT_DIR" </dev/tty
+            sudo chown "$(whoami)" "$PROJECT_DIR"
+        fi
 
         cat > "$HELIOS_HOME/executor.yaml" << YAML
 listen: "unix:///var/run/helios-executor.sock"
