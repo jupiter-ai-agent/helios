@@ -7,7 +7,7 @@ VERSION="0.1.0"
 GITHUB_REPO="jupiter-ai-agent/helios"
 HELIOS_HOME="$HOME/.helios"
 EXECUTOR_BIN="/usr/local/bin/helios-executor"
-SOCKET_PATH="/var/run/helios-executor.sock"
+SOCKET_PATH="$HOME/.helios/executor.sock"
 OPERATOR_IMAGE="jupitertriangles/helios-operator:202602"
 
 # ── 색상 ──
@@ -120,7 +120,7 @@ install_executor() {
         fi
 
         cat > "$HELIOS_HOME/executor.yaml" << YAML
-listen: "unix:///var/run/helios-executor.sock"
+listen: "unix://${HELIOS_HOME}/executor.sock"
 project_dir: "${PROJECT_DIR}"
 log_file: "${HELIOS_HOME}/executor.log"
 YAML
@@ -213,7 +213,7 @@ SERVICE
 wait_executor() {
     info "Executor 시작 대기..."
     for i in $(seq 1 15); do
-        if [ -S "$SOCKET_PATH" ]; then
+        if [ -S "${HELIOS_HOME}/executor.sock" ]; then
             ok "Executor 소켓 연결 확인"
             return 0
         fi
@@ -235,7 +235,7 @@ start_operator() {
         --name helios-operator \
         --restart unless-stopped \
         -p 1110:1110 \
-        -v "$SOCKET_PATH:/var/run/helios-executor.sock" \
+        -v "${HELIOS_HOME}/executor.sock:/var/run/helios-executor.sock" \
         -v "${PROJECT_DIR}:/helios" \
         -v helios-operator-data:/data \
         "$OPERATOR_IMAGE" >/dev/null
