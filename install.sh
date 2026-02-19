@@ -1,7 +1,6 @@
 #!/bin/bash
 # HELIOS Installer
 # Usage: curl -fsSL https://raw.githubusercontent.com/jupiter-ai-agent/helios/main/install.sh | sh
-# Dev:   curl -fsSL ... | sh -s -- --dev
 set -e
 
 VERSION="0.1.0"
@@ -22,14 +21,6 @@ info()  { echo -e "${BLUE}[INFO]${NC} $1"; }
 ok()    { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 fail()  { echo -e "${RED}[FAIL]${NC} $1"; exit 1; }
-
-# ── 인자 파싱 ──
-DEV_MODE=false
-for arg in "$@"; do
-    case "$arg" in
-        --dev) DEV_MODE=true ;;
-    esac
-done
 
 # ── OS/Arch 감지 ──
 detect_platform() {
@@ -59,11 +50,6 @@ check_existing() {
 
 # ── 이메일 인증 ──
 verify_email() {
-    if [ "$DEV_MODE" = true ]; then
-        warn "개발 모드 — 이메일 인증 건너뜀"
-        return 0
-    fi
-
     if [ "$UPDATE_MODE" = true ]; then
         info "업데이트 — 이메일 인증 건너뜀 (인증된 호스트)"
         return 0
@@ -72,7 +58,7 @@ verify_email() {
     AUTH_BIN="/tmp/helios-auth-${PLATFORM}"
     info "인증 바이너리 다운로드..."
     curl -fsSL "https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/helios-auth-${PLATFORM}" \
-        -o "$AUTH_BIN" 2>/dev/null || fail "helios-auth 다운로드 실패"
+        -o "$AUTH_BIN" 2>/dev/null || fail "helios-auth 다운로드 실패. 릴리스를 확인하세요."
     chmod +x "$AUTH_BIN"
 
     info "설치 인증 진행..."
@@ -257,11 +243,7 @@ main() {
 
     check_existing
     check_docker
-
-    if [ "$UPDATE_MODE" = false ]; then
-        verify_email
-    fi
-
+    verify_email
     install_executor
     register_daemon
     wait_executor
@@ -285,4 +267,4 @@ main() {
     echo ""
 }
 
-main "$@"
+main
