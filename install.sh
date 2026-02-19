@@ -9,7 +9,6 @@ HELIOS_HOME="$HOME/.helios"
 EXECUTOR_BIN="/usr/local/bin/helios-executor"
 SOCKET_PATH="$HOME/.helios/executor.sock"
 OPERATOR_IMAGE="jupitertriangles/helios-operator:202602"
-UI_IMAGE="jupitertriangles/helios-ui:202602"
 
 # ── 색상 ──
 RED='\033[0;31m'
@@ -232,52 +231,31 @@ wait_executor() {
     fail "Executor 시작 실패. 로그 확인: cat $HELIOS_HOME/executor.log"
 }
 
-# ── Docker 네트워크 ──
-create_network() {
-    docker network create helios-net 2>/dev/null || true
-}
+# ── Operator Stack (docker-compose) ──
+start_operator_stack() {
+    info "Operator Stack 기동..."
 
-# ── helios-ui 컨테이너 ──
-start_ui() {
-    info "UI 이미지 pull..."
-    docker pull "$UI_IMAGE" 2>/dev/null || warn "pull 실패 — 로컬 이미지 사용"
+    # .env for operator compose
+    cat > "${PROJECT_DIR}/.env.operator" << ENV
+HELIOS_SOCKET=${HELIOS_HOME}/executor.sock
+HELIOS_PROJECT_DIR=${PROJECT_DIR}
+ENV
 
-    docker rm -f helios-ui 2>/dev/null || true
+    # Pull images
+    docker compose -f "${PROJECT_DIR}/docker-compose.operator.yml" \
+        --env-file "${PROJECT_DIR}/.env.operator" \
+        pull 2>/dev/null || warn "pull 실패 — 로컬 이미지 사용"
 
-    info "UI 컨테이너 기동..."
-    docker run -d \
-        --name helios-ui \
-        --restart unless-stopped \
-        --network helios-net \
-        "$UI_IMAGE" >/dev/null
-
-    ok "UI 컨테이너 기동"
-}
-
-# ── Operator 컨테이너 ──
-start_operator() {
-    info "Operator 이미지 pull..."
-    docker pull "$OPERATOR_IMAGE" 2>/dev/null || warn "pull 실패 — 로컬 이미지 사용"
-
-    docker rm -f helios-operator 2>/dev/null || true
-
-    info "Operator 컨테이너 기동..."
-    docker run -d \
-        --name helios-operator \
-        --restart unless-stopped \
-        --network helios-net \
-        -p 1110:1110 \
-        -e HELIOS_UI_URL=http://helios-ui:80 \
-        -v "${HELIOS_HOME}/executor.sock:/var/run/helios-executor.sock" \
-        -v "${PROJECT_DIR}:/helios" \
-        -v helios-operator-data:/data \
-        "$OPERATOR_IMAGE" >/dev/null
+    # Start
+    docker compose -f "${PROJECT_DIR}/docker-compose.operator.yml" \
+        --env-file "${PROJECT_DIR}/.env.operator" \
+        up -d 2>&1 | grep -v "^$" || true
 
     # 헬스체크
     info "Operator 시작 대기..."
     for i in $(seq 1 20); do
         if curl -s http://localhost:1110/health >/dev/null 2>&1 || curl -sk https://localhost:1110/health >/dev/null 2>&1; then
-            ok "Operator 기동 완료"
+            ok "Operator Stack 기동 완료"
             return 0
         fi
         sleep 2
@@ -304,9 +282,18 @@ uninstall() {
         exit 0
     fi
 
-    # 1. Operator 컨테이너 + 볼륨
-    info "Operator 컨테이너 삭제..."
-    docker rm -f helios-operator 2>/dev/null || true
+    # 1. Operator Stack (compose)
+    info "Operator Stack 삭제..."
+    PROJECT_DIR=""
+    if [ -f "$HELIOS_HOME/executor.yaml" ]; then
+        PROJECT_DIR=$(grep project_dir "$HELIOS_HOME/executor.yaml" 2>/dev/null | awk '{print $2}' | tr -d '"')
+    fi
+    if [ -n "$PROJECT_DIR" ] && [ -f "${PROJECT_DIR}/docker-compose.operator.yml" ]; then
+        docker compose -f "${PROJECT_DIR}/docker-compose.operator.yml" \
+            --env-file "${PROJECT_DIR}/.env.operator" \
+            down -v 2>/dev/null || true
+    fi
+    docker rm -f helios-operator helios-operator-ui 2>/dev/null || true
     docker volume rm helios-operator-data 2>/dev/null || true
 
     # 2. 설치된 모든 HELIOS 서비스 컨테이너
@@ -383,9 +370,7 @@ main() {
     install_executor
     register_daemon
     wait_executor
-    create_network
-    start_ui
-    start_operator
+    start_operator_stack
 
     # 호스트 IP 감지
     if [ "$OS" = "darwin" ]; then
